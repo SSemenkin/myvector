@@ -6,12 +6,12 @@ template <typename T>
 class Allocator : public std::allocator<T>{
 public:
     [[nodiscard]] T* allocate(size_t count) {
-        std::cout << "Allocated " << count * sizeof(T) << " bytes\n";
+        //std::cout << "Allocated " << count * sizeof(T) << " bytes\n";
         return static_cast<T*>(::operator new(count * sizeof(T)));
     }
 
     void deallocate(T *memory, size_t n) {
-        std::cout << "Deallocated " << n << " objects\n";
+        //std::cout << "Deallocated " << n << " objects\n";
         ::operator delete(memory);
     }
 
@@ -34,7 +34,7 @@ class Vector {
     Alloc allocator;
 
     void checkSize() {
-        if(m_size == m_capacity) {
+        if(m_size >= m_capacity) {
             reserve(m_capacity == 0 ? 2 : m_capacity * 2);
         }
     }
@@ -50,16 +50,19 @@ public:
     Vector() : allocator(Alloc()) {
     }
 
-    Vector(size_t count, const T& init_value = T(), const tt::Allocator<T>& alloc = Alloc()) :
+    Vector(size_t count, const Alloc& alloc) :
         allocator(alloc) {
-        reserve(count, init_value);
+        reserve(count);
+    }
+    Vector(size_t count, const T& value = T(), const Alloc &alloc = Alloc()) :
+        allocator(alloc){
+        assign(count, value);
     }
 
 
-    template<typename... Args>
-    void reserve(size_t count, const Args&... args) {
+    void reserve(size_t count) {
 
-        if(count <= 0) {
+        if(count <= 0 && count < m_capacity) {
             return;
         }
 
@@ -68,20 +71,15 @@ public:
         try {
             mem = allocator.allocate(count);
 
-            for (constructed = 0; constructed < count; ++constructed) {
-                allocator.construct(mem+constructed, args...);
-            }
-
             if(m_size > 0) {
                 for (int i = 0; i < m_size; ++i) {
                     allocator.destroy(memory + i);
                 }
 
-
                 allocator.deallocate(memory, m_size);
             }
 
-            m_size = m_capacity = count;
+            m_capacity = count;
             memory = mem;
 
         }  catch (...) {
@@ -91,6 +89,29 @@ public:
             }
 
             allocator.deallocate(mem, count);
+            throw;
+        }
+    }
+
+    void assign(size_t count, const T& value) {
+        for(int i = 0; i < m_size; ++i) {
+            allocator.destroy(memory + i);
+        }
+
+        allocator.deallocate(memory, m_size);
+
+        reserve(count);
+        int constructed;
+        try {
+            for(constructed = 0; constructed < count;++constructed) {
+                allocator.construct(memory + constructed);
+            }
+
+            m_size = count;
+        }  catch (...) {
+            for (int i = 0; i < constructed; ++i) {
+                allocator.destroy(memory);
+            }
             throw;
         }
     }
@@ -172,22 +193,38 @@ public:
 
 int main(){
 
-    tt::Vector<int> entities;
-    entities.reserve(5, 5);
+    tt::Vector<int> entities(5);
+    std::cout << entities.capacity() << ' ' << entities.size() << '\n';
 
-    for(int i = 0; i < entities.size(); ++i) {
-        std::cout << entities[i] << '\t';
+
+    entities.push_back(1);
+    std::cout << entities.capacity() << ' ' << entities.size() << '\n';
+
+    entities.push_back(2);
+    std::cout << entities.capacity() << ' ' << entities.size() << '\n';
+
+    entities.push_back(2);
+    std::cout << entities.capacity() << ' ' << entities.size() << '\n';
+
+    for (int i = 0; i < entities.size(); ++i) {
+        std::cout << entities[i] << '\n';
     }
-    std::cout << '\n';
 
-//    for(int i = 0; i < 10; i++) {
-//        entities.push_back(5);
+//    entities.reserve(5, 5);
+
+//    for(int i = 0; i < entities.size(); ++i) {
+//        std::cout << entities[i] << '\t';
 //    }
+//    std::cout << '\n';
 
-    for(int i = 0; i < entities.size(); ++i) {
-        std::cout << entities[i] << '\t';
-    }
-    std::cout << '\n';
+////    for(int i = 0; i < 10; i++) {
+////        entities.push_back(5);
+////    }
+
+//    for(int i = 0; i < entities.size(); ++i) {
+//        std::cout << entities[i] << '\t';
+//    }
+//    std::cout << '\n';
 
 
     return 0;
