@@ -3,7 +3,7 @@
 
 namespace tt {
 template <typename T>
-class Allocator {
+class Allocator : public std::allocator<T>{
 public:
     [[nodiscard]] T* allocate(size_t count) {
         std::cout << "Allocated " << count * sizeof(T) << " bytes\n";
@@ -15,14 +15,11 @@ public:
         ::operator delete(memory);
     }
 
-    template<typename...  Args>
-    void create(T *memory, const Args& ... args) {
+    template< typename U, typename...  Args>
+    void construct(U *memory, Args&& ... args) {
         new(memory) T(args...);
     }
 
-    void create(T *memory, const T &rhs) {
-        new(memory) T(rhs);
-    }
 
     void destroy(T* object) {
         object->~T();
@@ -34,7 +31,7 @@ class Vector {
     size_t m_size {0};
     size_t m_capacity {0};
     T* memory {nullptr};
-    tt::Allocator<T> allocator;
+    Alloc allocator;
 
     void checkSize() {
         if(m_size == m_capacity) {
@@ -50,16 +47,12 @@ public:
         }
         allocator.deallocate(memory, m_size);
     }
-    Vector() : allocator(Alloc())
-    {
+    Vector() : allocator(Alloc()) {
     }
 
-    Vector(size_t count, const T& init_value = T()) :
-        m_size(count),
-        m_capacity(count),
-        allocator(Alloc())
-    {
-
+    Vector(size_t count, const T& init_value = T(), const tt::Allocator<T>& alloc = Alloc()) :
+        allocator(alloc) {
+        reserve(count, init_value);
     }
 
 
@@ -76,15 +69,17 @@ public:
             mem = allocator.allocate(count);
 
             for (constructed = 0; constructed < count; ++constructed) {
-                allocator.create(mem+constructed, args...);
+                allocator.construct(mem+constructed, args...);
             }
 
-            for (int i = 0; i < m_size; ++i) {
-                allocator.destroy(memory + i);
+            if(m_size > 0) {
+                for (int i = 0; i < m_size; ++i) {
+                    allocator.destroy(memory + i);
+                }
+
+
+                allocator.deallocate(memory, m_size);
             }
-
-
-            allocator.deallocate(memory, m_size);
 
             m_size = m_capacity = count;
             memory = mem;
@@ -123,8 +118,7 @@ public:
         checkSize();
 
         try {
-            allocator.create(memory + m_size, value);
-            ++m_size;
+            allocator.construct(memory + m_size++, value);
         }  catch (...) {
             allocator.destroy(memory + m_size);
             throw;
@@ -136,8 +130,7 @@ public:
         checkSize();
 
         try {
-            allocator.create(memory + m_size, args...);
-            ++m_size;
+            allocator.construct(memory + m_size++, args...);
         }  catch (...) {
             allocator.destroy(memory + m_size);
             throw;
@@ -149,11 +142,28 @@ public:
 
 class Entity {
 public:
+    ~Entity() noexcept {
+
+    }
     Entity() {
 
     }
-    explicit Entity(int n) : m(n) {
+    explicit Entity(int n) noexcept : m(n) {
 
+    }
+    Entity(const Entity& rhs) noexcept{
+        m = rhs.m;
+    }
+    Entity(Entity&& rhs) noexcept {
+        m = rhs.m;
+    }
+    Entity& operator=(const Entity& rhs) noexcept{
+        m = rhs.m;
+        return *this;
+    }
+    Entity& operator=(Entity&& rhs) noexcept {
+        m = rhs.m;
+        return *this;
     }
     int m;
 
@@ -162,8 +172,23 @@ public:
 
 int main(){
 
-    tt::Vector<Entity> entities;
-    entities.push_back(Entity(7));
-    std::cout << entities[0].m;
+    tt::Vector<int> entities;
+    entities.reserve(5, 5);
+
+    for(int i = 0; i < entities.size(); ++i) {
+        std::cout << entities[i] << '\t';
+    }
+    std::cout << '\n';
+
+//    for(int i = 0; i < 10; i++) {
+//        entities.push_back(5);
+//    }
+
+    for(int i = 0; i < entities.size(); ++i) {
+        std::cout << entities[i] << '\t';
+    }
+    std::cout << '\n';
+
+
     return 0;
 }
