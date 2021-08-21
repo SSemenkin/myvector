@@ -51,11 +51,12 @@ public:
     Vector() : allocator(Alloc()) {
     }
 
-    Vector(size_t count, const Alloc& alloc) :
-        allocator(alloc) {
+    Vector(size_t count) :
+        allocator(Alloc()) {
         reserve(count);
+
     }
-    Vector(size_t count, const T& value = T(), const Alloc &alloc = Alloc()) :
+    Vector(size_t count, const T& value, const Alloc &alloc = Alloc()) :
         allocator(alloc){
         assign(count, value);
     }
@@ -71,6 +72,12 @@ public:
         int constructed;
         try {
             mem = allocator.allocate(count);
+
+            if(m_size) {
+                for(constructed = 0; constructed < m_size; ++constructed) {
+                    allocator.construct(mem + constructed, *(memory+constructed));
+                }
+            }
 
             if(m_size > 0) {
                 for (int i = 0; i < m_size; ++i) {
@@ -105,7 +112,7 @@ public:
         int constructed;
         try {
             for(constructed = 0; constructed < count;++constructed) {
-                allocator.construct(memory + constructed);
+                allocator.construct(memory + constructed, value);
             }
 
             m_size = count;
@@ -160,10 +167,7 @@ public:
     }
 };
 
-template <>
-class tt::Vector<int> {
 
-};
 }
 
 
@@ -200,39 +204,7 @@ public:
 
 int main(){
 
-    tt::Vector<int> entities(5, 0);
-    std::cout << entities.capacity() << ' ' << entities.size() << '\n';
 
-
-    entities.push_back(1);
-    std::cout << entities.capacity() << ' ' << entities.size() << '\n';
-
-    entities.push_back(2);
-    std::cout << entities.capacity() << ' ' << entities.size() << '\n';
-
-    entities.push_back(2);
-    std::cout << entities.capacity() << ' ' << entities.size() << '\n';
-
-    for (int i = 0; i < entities.size(); ++i) {
-        std::cout << entities[i] << '\n';
-    }
-
-    std::vector<bool> a;
-//    entities.reserve(5, 5);
-
-//    for(int i = 0; i < entities.size(); ++i) {
-//        std::cout << entities[i] << '\t';
-//    }
-//    std::cout << '\n';
-
-////    for(int i = 0; i < 10; i++) {
-////        entities.push_back(5);
-////    }
-
-//    for(int i = 0; i < entities.size(); ++i) {
-//        std::cout << entities[i] << '\t';
-//    }
-//    std::cout << '\n';
 
 
     return 0;
