@@ -5,6 +5,7 @@ namespace tt {
 template <typename T>
 class Allocator : public std::allocator<T>{
 public:
+    explicit Allocator() = default;
     [[nodiscard]] T* allocate(size_t count) {
         //std::cout << "Allocated " << count * sizeof(T) << " bytes\n";
         return static_cast<T*>(::operator new(count * sizeof(T)));
@@ -62,7 +63,7 @@ public:
 
     void reserve(size_t count) {
 
-        if(count <= 0 && count < m_capacity) {
+        if(count <= 0 || count < m_capacity) {
             return;
         }
 
@@ -158,7 +159,13 @@ public:
         }
     }
 };
+
+template <>
+class tt::Vector<int> {
+
+};
 }
+
 
 
 class Entity {
@@ -193,7 +200,7 @@ public:
 
 int main(){
 
-    tt::Vector<int> entities(5);
+    tt::Vector<int> entities(5, 0);
     std::cout << entities.capacity() << ' ' << entities.size() << '\n';
 
 
@@ -210,6 +217,7 @@ int main(){
         std::cout << entities[i] << '\n';
     }
 
+    std::vector<bool> a;
 //    entities.reserve(5, 5);
 
 //    for(int i = 0; i < entities.size(); ++i) {
