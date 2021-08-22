@@ -144,18 +144,14 @@ public:
     }
 
     void push_back(const T& value) {
-        checkSize();
-
-        try {
-            allocator.construct(memory + m_size++, value);
-        }  catch (...) {
-            allocator.destroy(memory + m_size);
-            throw;
-        }
+        emplace_back(value);
+    }
+    void push_back(T&& value) {
+        emplace_back(value);
     }
 
     template<typename... Args>
-    void emplace_back(const Args& ... args) {
+    void emplace_back(Args&& ... args) {
         checkSize();
 
         try {
@@ -204,8 +200,14 @@ public:
 
 int main(){
 
-
-
-
+    tt::Vector<int> vec;
+    {
+        for (int i = 0; i < 10; ++i) {
+            vec.push_back(i);
+        }
+        for(int i = 0 ; i < 10; ++i) {
+            std::cout << vec[i] << '\t';
+        }
+    }
     return 0;
 }
