@@ -7,4 +7,6 @@ SOURCES += \
         main.cpp
 
 HEADERS += \
-    data_structures.h
+    data_structures.h \
+    vector.h
+

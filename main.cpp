@@ -1,10 +1,18 @@
-#include "data_structures.h"
+#include "vector.h"
 
 
+struct A {
+
+};
+
+A& getA() {
+    A *a = new A();
+    return *a;
+}
 
 int main()
 {
-    data_structures::list<int> list {1,2,3,4,5};
-    list.print();
+
+
     return 0;
 }
