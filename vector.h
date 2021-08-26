@@ -9,18 +9,16 @@ class Allocator : public std::allocator<T> {
 public:
     explicit Allocator() = default;
     [[nodiscard]] T* allocate(size_t count) {
-        //std::cout << "Allocated " << count * sizeof(T) << " bytes\n";
         return static_cast<T*>(::operator new(count * sizeof(T)));
     }
 
     void deallocate(T *memory, size_t /*n*/) {
-        //std::cout << "Deallocated " << n << " objects\n";
         ::operator delete(memory);
     }
 
     template< typename U, typename...  Args>
     void construct(U *memory, Args&& ... args) {
-        new(memory) T(args...);
+        new(memory) T(std::forward<Args>(args)...);
     }
 
 
@@ -31,10 +29,13 @@ public:
 
 template <typename T, typename Alloc = tt::Allocator<T>>
 class Vector {
+
     size_t m_size {0};
     size_t m_capacity {0};
     T* memory {nullptr};
     Alloc allocator;
+
+    using AllocTraits = std::allocator_traits<Alloc>;
 
     void checkSize() {
         if(m_size >= m_capacity) {
@@ -42,13 +43,16 @@ class Vector {
         }
     }
 
+    void clear() {
+        for(size_t i = 0; i < m_size; ++i) {
+            AllocTraits::destroy(allocator, memory+i);
+        }
+        AllocTraits::deallocate(allocator, memory, m_size);
+    }
 public:
 
     ~Vector() noexcept {
-        for(size_t i = 0; i < m_size; ++i) {
-            allocator.destroy(memory+i);
-        }
-        allocator.deallocate(memory, m_size);
+        clear();
     }
     Vector() : allocator(Alloc()) {
     }
@@ -81,11 +85,7 @@ public:
             }
 
             if(m_size > 0) {
-                for (size_t i = 0; i < m_size; ++i) {
-                    allocator.destroy(memory + i);
-                }
-
-                allocator.deallocate(memory, m_size);
+                clear();
             }
 
             m_capacity = count;
@@ -103,11 +103,9 @@ public:
     }
 
     void assign(size_t count, const T& value) {
-        for(int i = 0; i < m_size; ++i) {
-            allocator.destroy(memory + i);
+        if (m_size > 0) {
+            clear();
         }
-
-        allocator.deallocate(memory, m_size);
 
         reserve(count);
         size_t constructed;
@@ -149,7 +147,7 @@ public:
     }
 
     void push_back(T&& value) {
-        emplace_back(value);
+        emplace_back(std::move(value));
     }
 
     template<typename... Args>
@@ -157,7 +155,7 @@ public:
         checkSize();
 
         try {
-            allocator.construct(memory + m_size++, args...);
+            allocator.construct(memory + m_size++, std::forward<Args>(args)...);
         }  catch (...) {
             allocator.destroy(memory + m_size);
             throw;
