@@ -1,4 +1,4 @@
-#ifndef VECTOR_H
+﻿#ifndef VECTOR_H
 #define VECTOR_H
 #include <vector>
 #include <iostream>
@@ -36,6 +36,7 @@ class Vector {
     Alloc allocator;
 
     using AllocTraits = std::allocator_traits<Alloc>;
+    using size_type = size_t;
 
     void checkSize() {
         if(m_size >= m_capacity) {
@@ -50,6 +51,29 @@ class Vector {
         AllocTraits::deallocate(allocator, memory, m_size);
     }
 public:
+
+    struct iterator {
+      size_t m_offset {0};
+      T* m_data {nullptr};
+      iterator (size_t offset, T* weak_data) : m_data(weak_data), m_offset(offset) {
+
+      }
+
+      T& operator *() const noexcept {
+          return *(m_data + m_offset);
+      }
+      iterator& operator++ () noexcept {
+          m_offset++;
+          return *this;
+      }
+      bool operator <(const iterator& rhs) const {
+          return m_offset < rhs.m_offset;
+      }
+      bool operator != (const iterator& rhs) const {
+          return m_offset != rhs.m_offset;
+      }
+    };
+
 
     ~Vector() noexcept {
         clear();
@@ -76,11 +100,11 @@ public:
         T* mem {nullptr};
         size_t constructed {0};
         try {
-            mem = allocator.allocate(count);
+            mem = AllocTraits::allocate(allocator, count);
 
             if(m_size) {
                 for(constructed = 0; constructed < m_size; ++constructed) {
-                    allocator.construct(mem + constructed, *(memory+constructed));
+                    AllocTraits::construct(allocator, mem + constructed, std::move_if_noexcept(*(memory+constructed)));
                 }
             }
 
@@ -94,10 +118,10 @@ public:
         }  catch (...) {
 
             for(size_t i = 0; i < constructed; ++i) {
-                allocator.destroy(memory+i);
+                AllocTraits::destroy(allocator, memory+i);
             }
 
-            allocator.deallocate(mem, count);
+            AllocTraits::deallocate(allocator, mem, count);
             throw;
         }
     }
@@ -111,13 +135,13 @@ public:
         size_t constructed;
         try {
             for(constructed = 0; constructed < count;++constructed) {
-                allocator.construct(memory + constructed, value);
+                AllocTraits::construct(allocator, memory + constructed, value);
             }
 
             m_size = count;
         }  catch (...) {
             for (size_t i = 0; i < constructed; ++i) {
-                allocator.destroy(memory);
+                AllocTraits::destroy(allocator, memory);
             }
             throw;
         }
@@ -147,7 +171,7 @@ public:
     }
 
     void push_back(T&& value) {
-        emplace_back(std::move(value));
+        emplace_back(std::move_if_noexcept(value));
     }
 
     template<typename... Args>
@@ -155,11 +179,19 @@ public:
         checkSize();
 
         try {
-            allocator.construct(memory + m_size++, std::forward<Args>(args)...);
+            AllocTraits::construct(allocator, memory + m_size++, std::forward<Args>(args)...);
         }  catch (...) {
-            allocator.destroy(memory + m_size);
+            AllocTraits::destroy(allocator, memory + m_size);
             throw;
         }
+    }
+
+    iterator begin() const {
+        return iterator(0, memory);
+    }
+
+    iterator end() const {
+        return iterator(m_size, memory);
     }
 };
 
