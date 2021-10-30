@@ -3,7 +3,7 @@
 #include <vector>
 #include <iostream>
 
-namespace tt {
+namespace bicycle {
 template <typename T>
 class Allocator : public std::allocator<T> {
 public:
