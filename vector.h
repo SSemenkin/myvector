@@ -27,7 +27,7 @@ public:
     }
 };
 
-template <typename T, typename Alloc = tt::Allocator<T>>
+template <typename T, typename Alloc = bicycle::Allocator<T>>
 class Vector {
 
     size_t m_size {0};
@@ -90,6 +90,12 @@ public:
         assign(count, value);
     }
 
+    Vector(const Vector& rhs) {
+        //TODO Copy constructor
+    }
+    Vector(Vector&& rhs) {
+        //TODO Move constructor
+    }
 
     void reserve(size_t count) {
 
